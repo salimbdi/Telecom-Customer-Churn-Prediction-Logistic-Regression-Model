@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChurnIQ — Customer Churn Predictor</title>
+  <meta name="description" content="AI-powered telecom customer churn prediction dashboard. Enter customer details to instantly predict churn risk." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens ───────────────────────── */
+    :root {
+      --bg:          #0b0f1a;
+      --surface:     #111827;
+      --surface2:    #1a2236;
+      --border:      rgba(255,255,255,0.07);
+      --accent:      #6366f1;
+      --accent-glow: rgba(99,102,241,0.35);
+      --text:        #f1f5f9;
+      --muted:       #64748b;
+      --low:         #22c55e;
+      --mid:         #f59e0b;
+      --high:        #ef4444;
+      --radius:      14px;
+      --transition:  0.25s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Reset ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background mesh ─────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(99,102,241,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(168,85,247,0.10) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* ── Layout ──────────────────────────────── */
+    .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── Header ──────────────────────────────── */
+    header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 44px;
+    }
+    .logo {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: grid; place-items: center;
+      font-size: 22px; box-shadow: 0 4px 24px rgba(99,102,241,0.4);
+    }
+    .brand h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px; }
+    .brand p  { font-size: 0.82rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── Grid ────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      backdrop-filter: blur(12px);
+    }
+    .card-title {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ''; display: block;
+      width: 3px; height: 14px; border-radius: 4px;
+      background: linear-gradient(180deg, #6366f1, #a855f7);
+    }
+
+    /* ── Form sections ───────────────────────── */
+    .section-label {
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--accent);
+      margin: 24px 0 14px; opacity: 0.85;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 540px) { .form-grid, .form-grid.three { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+
+    .field select,
+    .field input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.87rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      appearance: none; -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 34px;
+    }
+    .field select:focus,
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .field select option { background: var(--surface2); }
+
+    /* ── Submit button ───────────────────────── */
+    .btn-predict {
+      width: 100%; margin-top: 28px;
+      padding: 15px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: #fff; font-family: inherit; font-size: 0.95rem; font-weight: 700;
+      border: none; border-radius: 10px; cursor: pointer;
+      letter-spacing: 0.3px;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.45); }
+    .btn-predict:active { transform: translateY(0); }
+    .btn-predict:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .btn-predict .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-predict.loading .spinner { display: block; }
+    .btn-predict.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Right panel ─────────────────────────── */
+    .result-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Gauge ───────────────────────────────── */
+    .gauge-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .gauge-card::before {
+      content: '';
+      position: absolute; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at center, var(--glow-color, rgba(99,102,241,0.08)) 0%, transparent 60%);
+      pointer-events: none;
+      transition: --glow-color 1s;
+    }
+
+    .gauge-wrap { position: relative; width: 200px; margin: 0 auto 20px; }
+    .gauge-svg { width: 100%; height: auto; overflow: visible; }
+    .gauge-track  { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 14; stroke-linecap: round; }
+    .gauge-fill   { fill: none; stroke: var(--accent); stroke-width: 14; stroke-linecap: round;
+                    stroke-dasharray: 220; stroke-dashoffset: 220;
+                    transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.8s ease; }
+    .gauge-center { position: absolute; inset: 0; display: grid; place-items: center; }
+    .gauge-pct    { font-size: 2.4rem; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+    .gauge-sub    { font-size: 0.7rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.5px; }
+
+    .risk-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 20px; border-radius: 99px;
+      font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px;
+      transition: background 0.6s ease, color 0.6s ease;
+      margin: 0 auto 6px;
+    }
+    .risk-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .gauge-label { font-size: 0.8rem; color: var(--muted); }
+
+    /* Placeholder state */
+    .gauge-placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px;
+      min-height: 200px; color: var(--muted);
+    }
+    .gauge-placeholder svg { opacity: 0.25; }
+    .gauge-placeholder p { font-size: 0.82rem; }
+
+    /* ── Risk factors ────────────────────────── */
+    .factors-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+    .factor-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeUp 0.4s ease both;
+    }
+    .factor-item:last-child { border-bottom: none; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .factor-name { font-size: 0.83rem; color: var(--text); max-width: 65%; }
+    .factor-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .factor-tag {
+      font-size: 0.7rem; font-weight: 600; padding: 3px 9px; border-radius: 99px;
+      white-space: nowrap;
+    }
+    .tag-risk { background: rgba(239,68,68,0.15); color: #f87171; }
+    .tag-safe { background: rgba(34,197,94,0.15); color: #4ade80; }
+
+    /* ── Empty states ────────────────────────── */
+    .empty-factors {
+      text-align: center; color: var(--muted); font-size: 0.82rem; padding: 20px 0;
+    }
+
+    /* ── Error toast ─────────────────────────── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e293b; border: 1px solid rgba(239,68,68,0.4);
+      color: #fca5a5; padding: 12px 24px; border-radius: 10px;
+      font-size: 0.85rem; font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      transition: transform 0.4s cubic-bezier(.4,0,.2,1);
+      z-index: 1000;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Divider ─────────────────────────────── */
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ── Footer ──────────────────────────────── */
+    footer { text-align: center; margin-top: 48px; color: var(--muted); font-size: 0.76rem; }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">🔮</div>
+    <div class="brand">
+      <h1>ChurnIQ</h1>
+      <p>Telecom Customer Churn Prediction · Logistic Regression Model</p>
+    </div>
+  </header>
+
+  <!-- Main grid -->
+  <div class="grid">
+
+    <!-- ── Left: Form ── -->
+    <div class="card">
+      <div class="card-title">Customer Profile</div>
+
+      <form id="churnForm" novalidate>
+
+        <!-- Demographics -->
+        <div class="section-label">Demographics</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="seniorcitizen">Senior Citizen</label>
+            <select id="seniorcitizen" name="seniorcitizen">
+              <option value="0">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="partner">Partner</label>
+            <select id="partner" name="partner">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="dependents">Dependents</label>
+            <select id="dependents" name="dependents">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="section-label">Account</div>
+        <div class="form-grid three">
+          <div class="field">
+            <label for="tenure">Tenure (months)</label>
+            <input type="number" id="tenure" name="tenure" min="0" max="72" value="12" />
+          </div>
+          <div class="field">
+            <label for="contract">Contract Type</label>
+            <select id="contract" name="contract">
+              <option value="month-to-month">Month-to-Month</option>
+              <option value="one_year">One Year</option>
+              <option value="two_year">Two Year</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="paperlessbilling">Paperless Billing</label>
+            <select id="paperlessbilling" name="paperlessbilling">
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Services -->
+        <div class="section-label">Services</div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="phoneservice">Phone Service</label>
+            <select id="phoneservice" name="phoneservice">
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="multiplelines">Multiple Lines</label>
+            <select id="multiplelines" name="multiplelines">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_phone_service">No Phone Service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="internetservice">Internet Service</label>
+            <select id="internetservice" name="internetservice">
+              <option value="dsl">DSL</option>
+              <option value="fiber_optic">Fiber Optic</option>
+              <option value="no">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="onlinesecurity">Online Security</label>
+            <select id="onlinesecurity" name="onlinesecurity">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="onlinebackup">Online Backup</label>
+            <select id="onlinebackup" name="onlinebackup">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="deviceprotection">Device Protection</label>
+            <select id="deviceprotection" name="deviceprotection">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="techsupport">Tech Support</label>
+            <select id="techsupport" name="techsupport">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="streamingtv">Streaming TV</label>
+            <select id="streamingtv" name="streamingtv">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="streamingmovies">Streaming Movies</label>
+            <select id="streamingmovies" name="streamingmovies">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+              <option value="no_internet_service">No Internet</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Billing -->
+        <div class="section-label">Billing</div>
+        <div class="form-grid three">
+          <div class="field">
+            <label for="paymentmethod">Payment Method</label>
+            <select id="paymentmethod" name="paymentmethod">
+              <option value="electronic_check">Electronic Check</option>
+              <option value="mailed_check">Mailed Check</option>
+              <option value="bank_transfer_(automatic)">Bank Transfer</option>
+              <option value="credit_card_(automatic)">Credit Card</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="monthlycharges">Monthly Charges ($)</label>
+            <input type="number" id="monthlycharges" name="monthlycharges" min="0" max="200" step="0.01" value="70.35" />
+          </div>
+          <div class="field">
+            <label for="totalcharges">Total Charges ($)</label>
+            <input type="number" id="totalcharges" name="totalcharges" min="0" step="0.01" value="844.00" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn-predict" id="predictBtn">
+          <div class="spinner"></div>
+          <span class="btn-text">⚡ Predict Churn Risk</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Right: Results ── -->
+    <div class="result-panel">
+
+      <!-- Gauge card -->
+      <div class="gauge-card" id="gaugeCard">
+        <div class="card-title" style="justify-content:center">Churn Probability</div>
+
+        <!-- Placeholder -->
+        <div class="gauge-placeholder" id="gaugePlaceholder">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>
+          <p>Submit customer data to see the prediction</p>
+        </div>
+
+        <!-- Live result -->
+        <div id="gaugeResult" style="display:none">
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 100 60">
+              <path class="gauge-track" d="M 10 55 A 45 45 0 0 1 90 55" />
+              <path class="gauge-fill" id="gaugeFill" d="M 10 55 A 45 45 0 0 1 90 55" />
+            </svg>
+            <div class="gauge-center">
+              <div>
+                <div class="gauge-pct" id="gaugePct">0%</div>
+                <div class="gauge-sub">churn risk</div>
+              </div>
+            </div>
+          </div>
+
+          <span class="risk-badge" id="riskBadge">
+            <span class="risk-dot"></span>
+            <span id="riskLabel">—</span>
+          </span>
+          <div class="gauge-label" id="gaugeVerdict"></div>
+        </div>
+      </div>
+
+      <!-- Risk Factors card -->
+      <div class="factors-card">
+        <div class="card-title">Top Risk Factors</div>
+        <div id="factorsList">
+          <div class="empty-factors">Risk factors will appear after prediction</div>
+        </div>
+      </div>
+
+    </div><!-- end result-panel -->
+  </div><!-- end grid -->
+
+  <footer>ChurnIQ · Logistic Regression · Telco Customer Churn Dataset</footer>
+</div><!-- end page -->
+
+<!-- Error toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Constants ────────────────────────────────
+  const API = 'http://localhost:8000/predict';
+  const GAUGE_MAX_DASH = 220; // matches stroke-dasharray
+
+  // ── Elements ─────────────────────────────────
+  const form      = document.getElementById('churnForm');
+  const btn       = document.getElementById('predictBtn');
+  const gaugeFill = document.getElementById('gaugeFill');
+  const gaugePct  = document.getElementById('gaugePct');
+  const riskBadge = document.getElementById('riskBadge');
+  const riskLabel = document.getElementById('riskLabel');
+  const gaugeVerdict    = document.getElementById('gaugeVerdict');
+  const gaugePlaceholder = document.getElementById('gaugePlaceholder');
+  const gaugeResult      = document.getElementById('gaugeResult');
+  const factorsList      = document.getElementById('factorsList');
+  const toast            = document.getElementById('toast');
+
+  // ── Gauge animation ───────────────────────────
+  function animateGauge(prob) {
+    const offset = GAUGE_MAX_DASH - (prob * GAUGE_MAX_DASH);
+    gaugeFill.style.strokeDashoffset = offset;
+
+    // colour by risk
+    const color = prob < 0.30 ? '#22c55e' : prob < 0.60 ? '#f59e0b' : '#ef4444';
+    gaugeFill.style.stroke = color;
+
+    // counter animation
+    let start = 0;
+    const target = Math.round(prob * 100);
+    const duration = 1200;
+    const step = timestamp => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out-cubic
+      gaugePct.textContent = Math.round(eased * target) + '%';
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // ── Risk badge style ──────────────────────────
+  function setRisk(level, color) {
+    const bg = level === 'Low'    ? 'rgba(34,197,94,0.15)'  :
+               level === 'Medium' ? 'rgba(245,158,11,0.15)' :
+                                    'rgba(239,68,68,0.15)';
+    riskBadge.style.background = bg;
+    riskBadge.style.color      = color;
+    riskLabel.textContent      = level + ' Risk';
+  }
+
+  // ── Risk factors list ─────────────────────────
+  function renderFactors(factors) {
+    if (!factors || factors.length === 0) {
+      factorsList.innerHTML = '<div class="empty-factors">No significant factors detected</div>';
+      return;
+    }
+    factorsList.innerHTML = factors.map((f, i) => `
+      <div class="factor-item" style="animation-delay:${i * 60}ms">
+        <div class="factor-name">${f.feature}</div>
+        <div class="factor-bar-wrap">
+          <span class="factor-tag ${f.impact > 0 ? 'tag-risk' : 'tag-safe'}">
+            ${f.direction}
+          </span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Toast ─────────────────────────────────────
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+  }
+
+  // ── Form submit ───────────────────────────────
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    // Build payload from form
+    const fd = new FormData(form);
+    const payload = {};
+    for (const [k, v] of fd.entries()) {
+      // numeric fields
+      if (['tenure', 'monthlycharges', 'totalcharges'].includes(k)) {
+        payload[k] = parseFloat(v);
+      } else {
+        payload[k] = v;
+      }
+    }
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Show results panel
+      gaugePlaceholder.style.display = 'none';
+      gaugeResult.style.display      = 'block';
+
+      animateGauge(data.churn_probability);
+      setRisk(data.risk_level, data.risk_color);
+
+      gaugeVerdict.textContent = data.will_churn
+        ? '⚠ Likely to churn — action recommended'
+        : '✓ Not likely to churn at this time';
+      gaugeVerdict.style.color = data.will_churn ? '#f87171' : '#4ade80';
+
+      renderFactors(data.risk_factors);
+
+    } catch (err) {
+      showToast('❌ ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  });
+</script>
+</body>
+</html>
